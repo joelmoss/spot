@@ -11,19 +11,20 @@ A tiny, native macOS mini player for Spotify. Floats above all windows and shows
 - Translucent material background
 - Draggable by clicking anywhere on the window
 - Close button appears on hover
-- Graceful fallback when Spotify isn't running
+- Like/unlike tracks from the player
+- Graceful fallback when there's no active playback
 
 ## Requirements
 
 - macOS 14.0+
-- Spotify desktop app
+- Spotify Premium account (required for playback control)
 - Swift 5.10+
 
 ## Install
 
 Download the latest `Spot.dmg` from [Releases](https://github.com/joelmoss/spot/releases), open it, and drag **Spot.app** to your Applications folder.
 
-On first launch, macOS will ask for permission to control Spotify via AppleScript -- click Allow.
+On first launch, open Settings and connect your Spotify account.
 
 ## Build from source
 
@@ -47,7 +48,7 @@ swift run Spot
 
 ## How it works
 
-Spot communicates with Spotify using AppleScript via `NSAppleScript`. It polls every second for the current track info (name, artist, artwork URL, player state, volume). No API keys or authentication required.
+Spot uses the Spotify Web API for all communication -- playback control, track polling, and library operations. It polls every second for the current track info (name, artist, artwork URL, player state, volume). Authentication uses OAuth 2.0 with PKCE (no client secret needed).
 
 The window is configured as a borderless, floating panel (`NSWindow.Level.floating`) with `LSUIElement` set to `true` in the Info.plist, so it runs without a Dock icon.
 
