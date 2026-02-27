@@ -23,6 +23,12 @@
 
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/joelmoss/spot/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>JUdX5urBRS1a/heb5qKRuxdxQtHXS3WLGYd0+qI9P6k=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

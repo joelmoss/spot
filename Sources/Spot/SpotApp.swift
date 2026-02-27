@@ -26,6 +26,7 @@ struct SpotApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var spotify = SpotifyController()
     @State private var auth = SpotifyAuth()
+    @State private var updater = UpdaterController()
 
     init() {}
 
@@ -46,7 +47,7 @@ struct SpotApp: App {
         .defaultSize(width: 320, height: 110)
 
         Window("Preferences", id: "settings") {
-            SettingsView(auth: auth)
+            SettingsView(auth: auth, updater: updater)
         }
         .windowResizability(.contentSize)
     }

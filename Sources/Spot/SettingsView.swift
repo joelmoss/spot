@@ -4,6 +4,7 @@ struct SettingsView: View {
     @AppStorage("showControls") private var showControls = true
     @State private var clientIDText = ""
     let auth: SpotifyAuth
+    let updater: UpdaterController
 
     var body: some View {
         Form {
@@ -62,6 +63,24 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Updates") {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Check for Updates...") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+
+                Toggle("Automatically check for updates", isOn: Binding(
+                    get: { updater.automaticallyChecksForUpdates },
+                    set: { updater.automaticallyChecksForUpdates = $0 }
+                ))
+            }
         }
         .formStyle(.grouped)
         .scrollIndicators(.hidden)

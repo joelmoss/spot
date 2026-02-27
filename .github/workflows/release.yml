@@ -34,6 +34,13 @@ jobs:
           cp build/Spot "${APP_BUNDLE}/Contents/MacOS/Spot"
           cp Info.plist "${APP_BUNDLE}/Contents/Info.plist"
 
+          # Copy Sparkle framework into the app bundle
+          SPARKLE_PATH=$(find .build -path "*/artifacts/Sparkle/Sparkle.framework" -type d | head -1)
+          if [ -n "$SPARKLE_PATH" ]; then
+            mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
+            cp -R "$SPARKLE_PATH" "${APP_BUNDLE}/Contents/Frameworks/"
+          fi
+
       - name: Create DMG
         run: |
           hdiutil create -volname "Spot" \
@@ -42,8 +49,65 @@ jobs:
             "build/Spot.dmg" \
             -quiet
 
+      - name: Create ZIP for Sparkle
+        run: |
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent Spot.app Spot.zip
+
+      - name: Sign update and generate appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          FILE_SIZE=$(stat -f%z build/Spot.zip)
+          DOWNLOAD_URL="https://github.com/joelmoss/spot/releases/download/${GITHUB_REF_NAME}/Spot.zip"
+
+          # Find sign_update tool from Sparkle build artifacts
+          SIGN_UPDATE=$(find .build -name "sign_update" -type f | head -1)
+
+          if [ -n "$SIGN_UPDATE" ]; then
+            chmod +x "$SIGN_UPDATE"
+            SIGNATURE=$( echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" build/Spot.zip -f - )
+          else
+            echo "::warning::sign_update not found — appcast will lack EdDSA signature"
+            SIGNATURE=""
+          fi
+
+          cat > appcast.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>Spot</title>
+              <link>https://raw.githubusercontent.com/joelmoss/spot/main/appcast.xml</link>
+              <description>Spot updates</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION}</title>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <pubDate>$(date -R)</pubDate>
+                <enclosure url="${DOWNLOAD_URL}" length="${FILE_SIZE}" type="application/octet-stream" sparkle:edSignature="${SIGNATURE}" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/Spot.dmg
+          files: |
+            build/Spot.dmg
+            build/Spot.zip
           generate_release_notes: true
+
+      - name: Update appcast on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add appcast.xml
+          git commit -m "Update appcast.xml for ${GITHUB_REF_NAME}"
+          git push origin main
