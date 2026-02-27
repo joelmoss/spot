@@ -5,5 +5,12 @@
     <link>https://raw.githubusercontent.com/joelmoss/spot/main/appcast.xml</link>
     <description>Spot updates</description>
     <language>en</language>
+    <item>
+      <title>Version 1.3.0</title>
+      <sparkle:version>1.3.0</sparkle:version>
+      <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+      <pubDate>Fri, 27 Feb 2026 23:28:23 +0000</pubDate>
+      <enclosure url="https://github.com/joelmoss/spot/releases/download/v1.3.0/Spot.zip" length="284308" type="application/octet-stream" sparkle:edSignature="sparkle:edSignature="vH/z+8a+RbPGwXCeVVDXjrPs/ZOKvLOwPS69H4aoxqGAzCOtB9I5Q70KSjfy0eUjX3nXoIMlZQ2YGMoT6x67BQ==" length="284308"" />
+    </item>
   </channel>
 </rss>
