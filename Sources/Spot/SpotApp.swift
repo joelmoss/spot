@@ -28,6 +28,11 @@ struct SpotApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultSize(width: 320, height: 110)
+
+        Window("Preferences", id: "settings") {
+            SettingsView()
+        }
+        .windowResizability(.contentSize)
     }
 
     private func configureWindows() {

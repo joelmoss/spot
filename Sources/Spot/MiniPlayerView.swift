@@ -2,19 +2,20 @@ import SwiftUI
 import AppKit
 
 struct MiniPlayerView: View {
+    @Environment(\.openWindow) private var openWindow
     let spotify: SpotifyController
     @State private var isHovering = false
+    @AppStorage("showControls") private var showControls = true
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Group {
-                if spotify.isSpotifyRunning {
-                    playerView
-                } else {
-                    notRunningView
-                }
+        Group {
+            if spotify.isSpotifyRunning {
+                playerView
+            } else {
+                notRunningView
             }
-
+        }
+        .overlay(alignment: .topLeading) {
             if isHovering {
                 Button {
                     NSApplication.shared.terminate(nil)
@@ -29,7 +30,22 @@ struct MiniPlayerView: View {
                 .transition(.opacity)
             }
         }
-        .frame(width: 320, height: 110)
+        .overlay(alignment: .topTrailing) {
+            if isHovering {
+                Button {
+                    openWindow(id: "settings")
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .background(Circle().fill(.ultraThickMaterial).frame(width: 12, height: 12))
+                }
+                .buttonStyle(.plain)
+                .padding(6)
+                .transition(.opacity)
+            }
+        }
+        .frame(width: showControls ? 320 : 220, height: showControls ? 110 : 310, alignment: .top)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .onHover { hovering in
@@ -46,52 +62,101 @@ struct MiniPlayerView: View {
     }
 
     private var playerView: some View {
-        HStack(spacing: 12) {
-            AsyncImage(url: spotify.artworkURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(.quaternary)
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .foregroundStyle(.secondary)
-                    }
+        Group {
+            if showControls {
+                horizontalLayout
+            } else {
+                verticalLayout
             }
-            .frame(width: 72, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    private var horizontalLayout: some View {
+        HStack(spacing: 0) {
+            artwork(size: 110)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(spotify.trackName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
+                trackInfo
 
-                Text(spotify.artistName)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                Spacer().frame(height: 6)
 
-                Spacer().frame(height: 2)
-
-                HStack(spacing: 4) {
-                    Image(systemName: volumeIcon)
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 12)
-
-                    Slider(value: Binding(
-                        get: { spotify.volume },
-                        set: { spotify.setVolume($0) }
-                    ), in: 0...100)
-                    .controlSize(.mini)
-                }
+                volumeSlider
             }
+            .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
 
             controls
+                .padding(.trailing, 12)
         }
-        .padding(12)
+    }
+
+    private var verticalLayout: some View {
+        VStack(spacing: 0) {
+            artwork(size: 220)
+
+            VStack(spacing: 8) {
+                VStack(spacing: 2) {
+                    Text(spotify.trackName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .lineLimit(1)
+
+                    Text(spotify.artistName)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+
+                volumeSlider
+            }
+            .padding(12)
+        }
+    }
+
+    private func artwork(size: CGFloat) -> some View {
+        AsyncImage(url: spotify.artworkURL) { image in
+            image
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } placeholder: {
+            Rectangle()
+                .fill(.quaternary)
+                .overlay {
+                    Image(systemName: "music.note")
+                        .font(.system(size: size * 0.3))
+                        .foregroundStyle(.secondary)
+                }
+        }
+        .frame(width: size, height: size)
+        .clipped()
+    }
+
+    private var trackInfo: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(spotify.trackName)
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+
+            Text(spotify.artistName)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    private var volumeSlider: some View {
+        HStack(spacing: 4) {
+            Image(systemName: volumeIcon)
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .frame(width: 12)
+
+            Slider(value: Binding(
+                get: { spotify.volume },
+                set: { spotify.setVolume($0) }
+            ), in: 0...100)
+            .controlSize(.mini)
+        }
     }
 
     private var controls: some View {
