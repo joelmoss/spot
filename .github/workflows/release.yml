@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build arm64
+        run: swift build -c release --arch arm64
+
+      - name: Build x86_64
+        run: swift build -c release --arch x86_64
+
+      - name: Create universal binary
+        run: |
+          mkdir -p build
+          lipo -create \
+            .build/arm64-apple-macosx/release/Spot \
+            .build/x86_64-apple-macosx/release/Spot \
+            -output build/Spot
+
+      - name: Assemble app bundle
+        run: |
+          APP_BUNDLE="build/Spot.app"
+          mkdir -p "${APP_BUNDLE}/Contents/MacOS"
+          mkdir -p "${APP_BUNDLE}/Contents/Resources"
+          cp build/Spot "${APP_BUNDLE}/Contents/MacOS/Spot"
+          cp Info.plist "${APP_BUNDLE}/Contents/Info.plist"
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "Spot" \
+            -srcfolder "build/Spot.app" \
+            -ov -format UDZO \
+            "build/Spot.dmg" \
+            -quiet
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/Spot.dmg
+          generate_release_notes: true
