@@ -46,7 +46,7 @@ struct MiniPlayerView: View {
                 .transition(.opacity)
             }
         }
-        .frame(width: showControls ? 320 : 220, height: showControls ? 110 : 310, alignment: .top)
+        .frame(width: showControls ? 320 : 220, height: showControls ? 110 : 300, alignment: .top)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .onHover { hovering in
@@ -76,12 +76,13 @@ struct MiniPlayerView: View {
     private var horizontalLayout: some View {
         HStack(spacing: 0) {
             artwork(size: 110)
+                .overlay(alignment: .bottomTrailing) {
+                    likeButton(size: 12)
+                        .padding(6)
+                }
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    trackInfo
-                    likeButton(size: 12)
-                }
+                trackInfo
 
                 Spacer().frame(height: 6)
 
@@ -98,21 +99,21 @@ struct MiniPlayerView: View {
     private var verticalLayout: some View {
         VStack(spacing: 0) {
             artwork(size: 220)
+                .overlay(alignment: .bottomTrailing) {
+                    likeButton(size: 14)
+                        .padding(8)
+                }
 
             VStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    VStack(spacing: 2) {
-                        Text(spotify.trackName)
-                            .font(.system(size: 14, weight: .semibold))
-                            .lineLimit(1)
+                VStack(spacing: 2) {
+                    Text(spotify.trackName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .lineLimit(1)
 
-                        Text(spotify.artistName)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-
-                    likeButton(size: 14)
+                    Text(spotify.artistName)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -196,8 +197,9 @@ struct MiniPlayerView: View {
                 Button(action: spotify.toggleLike) {
                     Image(systemName: spotify.isLiked ? "heart.fill" : "heart")
                         .font(.system(size: size))
-                        .foregroundStyle(spotify.isLiked ? .red : .secondary)
+                        .foregroundStyle(spotify.isLiked ? .red : .white)
                         .contentTransition(.symbolEffect(.replace))
+                        .shadow(color: .black.opacity(0.5), radius: 2)
                 }
                 .buttonStyle(.plain)
             }
