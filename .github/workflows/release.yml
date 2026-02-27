@@ -99,6 +99,12 @@ jobs:
             build/Spot.dmg
             build/Spot.zip
           generate_release_notes: true
+          body: |
+            ## Installation
+
+            1. Download **Spot.dmg** and drag Spot to Applications
+            2. On first launch, **right-click** Spot.app and select **Open** (required once for unsigned apps)
+            3. Subsequent launches work normally
 
       - name: Update appcast on main
         env:
