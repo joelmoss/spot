@@ -10,7 +10,9 @@ struct MiniPlayerView: View {
 
     var body: some View {
         Group {
-            if spotify.isSpotifyRunning {
+            if !auth.isAuthenticated {
+                connectView
+            } else if spotify.isSpotifyRunning {
                 playerView
             } else {
                 notRunningView
@@ -211,6 +213,22 @@ struct MiniPlayerView: View {
         if spotify.volume < 33 { return "speaker.wave.1.fill" }
         if spotify.volume < 66 { return "speaker.wave.2.fill" }
         return "speaker.wave.3.fill"
+    }
+
+    private var connectView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "music.note")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Connect to Spotify")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Button("Connect") {
+                auth.authorize()
+            }
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var notRunningView: some View {
