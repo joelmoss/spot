@@ -10,7 +10,9 @@ struct MiniPlayerView: View {
 
     var body: some View {
         Group {
-            if !auth.isAuthenticated {
+            if !auth.hasClientID {
+                setupView
+            } else if !auth.isAuthenticated {
                 connectView
             } else if spotify.isSpotifyRunning {
                 playerView
@@ -213,6 +215,22 @@ struct MiniPlayerView: View {
         if spotify.volume < 33 { return "speaker.wave.1.fill" }
         if spotify.volume < 66 { return "speaker.wave.2.fill" }
         return "speaker.wave.3.fill"
+    }
+
+    private var setupView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "key.fill")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Client ID Required")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+            Button("Open Settings") {
+                openWindow(id: "settings")
+            }
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var connectView: some View {

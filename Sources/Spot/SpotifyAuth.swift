@@ -28,15 +28,14 @@ protocol SpotifyAuthProviding: AnyObject {
 @Observable
 final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProviding, SpotifyAuthProviding {
     // MARK: - Configuration
-    // Replace with your Spotify Developer App Client ID
-    // Create one at https://developer.spotify.com/dashboard
-    private static let clientID = "28f91303ea6d447aa87749890a52c888"
     private static let redirectURI = "spot-app://callback"
     private static let scopes = "user-read-playback-state user-modify-playback-state user-read-currently-playing user-library-read user-library-modify"
     private static let tokenURL = "https://accounts.spotify.com/api/token"
     private static let authorizeURL = "https://accounts.spotify.com/authorize"
 
     // MARK: - State
+    private(set) var clientID: String?
+    var hasClientID: Bool { !(clientID?.trimmingCharacters(in: .whitespaces).isEmpty ?? true) }
     var isAuthenticated: Bool { accessToken != nil }
     private var accessToken: String?
     private var refreshToken: String?
@@ -49,6 +48,7 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     private static let authVersion = 5
 
     private enum StorageKey {
+        static let clientID = "spotifyClientID"
         static let accessToken = "spotifyAccessToken"
         static let refreshToken = "spotifyRefreshToken"
         static let tokenExpiry = "spotifyTokenExpiry"
@@ -57,6 +57,7 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
 
     override init() {
         super.init()
+        clientID = UserDefaults.standard.string(forKey: StorageKey.clientID)
         if UserDefaults.standard.integer(forKey: StorageKey.authVersion) < Self.authVersion {
             // Auth version changed — clear stale tokens and force re-authorization
             UserDefaults.standard.removeObject(forKey: StorageKey.accessToken)
@@ -81,13 +82,15 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     // MARK: - Authorization
 
     func authorize() {
+        guard let clientID, hasClientID else { return }
+
         let verifier = generateCodeVerifier()
         codeVerifier = verifier
         let challenge = generateCodeChallenge(from: verifier)
 
         var components = URLComponents(string: Self.authorizeURL)!
         components.queryItems = [
-            URLQueryItem(name: "client_id", value: Self.clientID),
+            URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "redirect_uri", value: Self.redirectURI),
             URLQueryItem(name: "scope", value: Self.scopes),
@@ -133,9 +136,21 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         tokenExpiry = nil
         codeVerifier = nil
         authSession = nil
+        clientID = nil
         UserDefaults.standard.removeObject(forKey: StorageKey.accessToken)
         UserDefaults.standard.removeObject(forKey: StorageKey.refreshToken)
         UserDefaults.standard.removeObject(forKey: StorageKey.tokenExpiry)
+        UserDefaults.standard.removeObject(forKey: StorageKey.clientID)
+    }
+
+    func setClientID(_ newID: String) {
+        let trimmed = newID.trimmingCharacters(in: .whitespaces)
+        let oldID = clientID
+        clientID = trimmed.isEmpty ? nil : trimmed
+        UserDefaults.standard.set(clientID, forKey: StorageKey.clientID)
+        if oldID != nil && oldID != clientID {
+            disconnect()
+        }
     }
 
     // MARK: - Playback API
@@ -313,6 +328,8 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     private func exchangeCode(_ code: String, verifier: String) {
+        guard let clientID, hasClientID else { return }
+
         var request = URLRequest(url: URL(string: Self.tokenURL)!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -321,7 +338,7 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
             "grant_type=authorization_code",
             "code=\(code)",
             "redirect_uri=\(Self.redirectURI)",
-            "client_id=\(Self.clientID)",
+            "client_id=\(clientID)",
             "code_verifier=\(verifier)",
         ].joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
@@ -333,6 +350,8 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     private func refreshAccessToken(_ token: String) async {
+        guard let clientID, hasClientID else { return }
+
         var request = URLRequest(url: URL(string: Self.tokenURL)!)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -340,7 +359,7 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         let body = [
             "grant_type=refresh_token",
             "refresh_token=\(token)",
-            "client_id=\(Self.clientID)",
+            "client_id=\(clientID)",
         ].joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("showControls") private var showControls = true
+    @State private var clientIDText = ""
     let auth: SpotifyAuth
 
     var body: some View {
@@ -9,13 +10,18 @@ struct SettingsView: View {
             Toggle("Show track controls", isOn: $showControls)
 
             Section("Spotify Account") {
-                if auth.isAuthenticated {
+                if !auth.hasClientID {
+                    Text("Enter a Client ID below to connect your account.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if auth.isAuthenticated {
                     HStack {
                         Label("Connected", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                         Spacer()
                         Button("Disconnect") {
                             auth.disconnect()
+                            clientIDText = ""
                         }
                     }
                 } else {
@@ -32,10 +38,47 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Section("Spotify Developer") {
+                TextField("Client ID", text: $clientIDText)
+                    .font(.system(.body, design: .monospaced))
+                    .disabled(auth.isAuthenticated)
+                    .onChange(of: clientIDText) {
+                        auth.setClientID(clientIDText)
+                    }
+
+                Link(
+                    "Open Spotify Developer Dashboard",
+                    destination: URL(string: "https://developer.spotify.com/dashboard")!
+                )
+                .font(.caption)
+
+                if !auth.hasClientID {
+                    Text(
+                        "Create an app and set the redirect URI to **spot-app://callback**. Select **Web API** for the API type."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+
         }
         .formStyle(.grouped)
         .scrollIndicators(.hidden)
-        .frame(width: 320)
+        .frame(width: 450)
         .fixedSize()
+        .onAppear {
+            clientIDText = auth.clientID ?? ""
+            NSApp.setActivationPolicy(.regular)
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window != NSApp.windows.first {
+                    window.makeKeyAndOrderFront(nil)
+                }
+            }
+        }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 }

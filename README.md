@@ -19,12 +19,27 @@ A tiny, native macOS mini player for Spotify. Floats above all windows and shows
 - macOS 14.0+
 - Spotify Premium account (required for playback control)
 - Swift 5.10+
+- A Spotify Developer app (free — see Setup below)
 
-## Install
+## Setup
+
+### 1. Create a Spotify Developer App
+
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create a new app
+3. Set the redirect URI to `spot-app://callback`
+4. Select **Web API** for the API type
+5. Copy the **Client ID** from the app settings
+
+### 2. Install Spot
 
 Download the latest `Spot.dmg` from [Releases](https://github.com/joelmoss/spot/releases), open it, and drag **Spot.app** to your Applications folder.
 
-On first launch, open Settings and connect your Spotify account.
+### 3. Configure
+
+1. Launch Spot — it will prompt you to open Settings
+2. Paste your **Client ID** into the Spotify Developer section
+3. Click **Connect** to authorize your Spotify account
 
 ## Build from source
 

@@ -3,6 +3,7 @@ import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var auth: SpotifyAuth?
+    var playerWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -26,18 +27,7 @@ struct SpotApp: App {
     @State private var spotify = SpotifyController()
     @State private var auth = SpotifyAuth()
 
-    init() {
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            guard let window = notification.object as? NSWindow else { return }
-            window.level = .floating
-            window.isMovableByWindowBackground = true
-            window.backgroundColor = .clear
-        }
-    }
+    init() {}
 
     var body: some Scene {
         WindowGroup {
@@ -45,7 +35,10 @@ struct SpotApp: App {
                 .onAppear {
                     spotify.auth = auth
                     appDelegate.auth = auth
-                    configureWindows()
+                    if let window = NSApplication.shared.windows.first {
+                        appDelegate.playerWindow = window
+                        configurePlayerWindow(window)
+                    }
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -58,13 +51,11 @@ struct SpotApp: App {
         .windowResizability(.contentSize)
     }
 
-    private func configureWindows() {
-        for window in NSApplication.shared.windows {
-            window.styleMask = [.borderless, .fullSizeContentView]
-            window.titlebarAppearsTransparent = true
-            window.level = .floating
-            window.isMovableByWindowBackground = true
-            window.backgroundColor = .clear
-        }
+    private func configurePlayerWindow(_ window: NSWindow) {
+        window.styleMask = [.borderless, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+        window.backgroundColor = .clear
     }
 }
