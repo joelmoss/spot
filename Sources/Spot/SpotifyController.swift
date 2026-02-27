@@ -9,8 +9,12 @@ final class SpotifyController {
     var isPlaying: Bool = false
     var isSpotifyRunning: Bool = false
     var volume: Double = 50
+    var trackID: String = ""
+    var isLiked: Bool = false
+    var auth: (any SpotifyAuthProviding)?
     private var timer: Timer?
     private var isSettingVolume = false
+    private var lastCheckedTrackID: String = ""
 
     func startPolling() {
         fetchCurrentTrack()
@@ -25,87 +29,125 @@ final class SpotifyController {
     }
 
     func nextTrack() {
-        runAppleScript("tell application \"Spotify\" to next track")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.fetchCurrentTrack()
+        guard let auth else { return }
+        Task {
+            await auth.nextTrack()
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run { self.fetchCurrentTrack() }
         }
     }
 
     func previousTrack() {
-        runAppleScript("tell application \"Spotify\" to previous track")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.fetchCurrentTrack()
+        guard let auth else { return }
+        Task {
+            await auth.previousTrack()
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run { self.fetchCurrentTrack() }
         }
     }
 
     func setVolume(_ value: Double) {
         isSettingVolume = true
         volume = value
-        runAppleScript("tell application \"Spotify\" to set sound volume to \(Int(value))")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.isSettingVolume = false
+        guard let auth else { return }
+        Task {
+            await auth.setVolume(Int(value))
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await MainActor.run { self.isSettingVolume = false }
         }
     }
 
     func togglePlayPause() {
-        runAppleScript("tell application \"Spotify\" to playpause")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.fetchCurrentTrack()
+        guard let auth else { return }
+        Task {
+            if isPlaying {
+                await auth.pause()
+            } else {
+                await auth.play()
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            await MainActor.run { self.fetchCurrentTrack() }
+        }
+    }
+
+    func toggleLike() {
+        guard !trackID.isEmpty, let auth, auth.isAuthenticated else { return }
+        let id = trackID
+        let shouldSave = !isLiked
+        isLiked = shouldSave // optimistic update
+
+        Task {
+            let success: Bool
+            if shouldSave {
+                success = await auth.saveTrack(trackID: id)
+            } else {
+                success = await auth.removeTrack(trackID: id)
+            }
+            if !success {
+                await MainActor.run { isLiked = !shouldSave }
+            }
         }
     }
 
     private func fetchCurrentTrack() {
-        let script = """
-        if application "Spotify" is running then
-            tell application "Spotify"
-                set trackName to name of current track
-                set trackArtist to artist of current track
-                set trackArtwork to artwork url of current track
-                set playerState to player state as string
-                set vol to sound volume
-                return trackName & "|||" & trackArtist & "|||" & trackArtwork & "|||" & playerState & "|||" & vol
-            end tell
-        else
-            return "NOT_RUNNING"
-        end if
-        """
-
-        guard let result = runAppleScript(script) else {
+        guard let auth, auth.isAuthenticated else {
             isSpotifyRunning = false
             return
         }
 
-        if result == "NOT_RUNNING" {
+        Task {
+            let state = await auth.getCurrentPlayback()
+            await MainActor.run {
+                self.applyPlaybackState(state)
+            }
+        }
+    }
+
+    func applyPlaybackState(_ state: PlaybackState?) {
+        guard let state else {
             isSpotifyRunning = false
             trackName = ""
             artistName = ""
             artworkURL = nil
             isPlaying = false
+            trackID = ""
+            isLiked = false
             return
         }
 
-        let parts = result.components(separatedBy: "|||")
-        guard parts.count >= 5 else { return }
-
         isSpotifyRunning = true
-        trackName = parts[0]
-        artistName = parts[1]
-        artworkURL = URL(string: parts[2])
-        isPlaying = parts[3] == "playing"
-        if !isSettingVolume, let vol = Double(parts[4].trimmingCharacters(in: .whitespaces)) {
-            volume = vol
+        trackName = state.trackName
+        artistName = state.artistName
+        artworkURL = state.artworkURL
+        isPlaying = state.isPlaying
+        if !isSettingVolume {
+            volume = Double(state.volume)
+        }
+
+        let newTrackID = state.trackID
+        if newTrackID != trackID {
+            trackID = newTrackID
+            checkIfLiked()
+        } else if lastCheckedTrackID != trackID {
+            checkIfLiked()
         }
     }
 
-    @discardableResult
-    private func runAppleScript(_ source: String) -> String? {
-        let script = NSAppleScript(source: source)
-        var error: NSDictionary?
-        let result = script?.executeAndReturnError(&error)
-        if let error = error {
-            print("AppleScript error: \(error)")
-            return nil
+    private func checkIfLiked() {
+        guard !trackID.isEmpty, let auth, auth.isAuthenticated else {
+            isLiked = false
+            return
         }
-        return result?.stringValue
+        let id = trackID
+        lastCheckedTrackID = id
+
+        Task {
+            let liked = await auth.checkIfLiked(trackID: id)
+            await MainActor.run {
+                if self.trackID == id {
+                    self.isLiked = liked
+                }
+            }
+        }
     }
 }

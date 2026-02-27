@@ -4,6 +4,7 @@ import AppKit
 struct MiniPlayerView: View {
     @Environment(\.openWindow) private var openWindow
     let spotify: SpotifyController
+    let auth: SpotifyAuth
     @State private var isHovering = false
     @AppStorage("showControls") private var showControls = true
 
@@ -54,6 +55,7 @@ struct MiniPlayerView: View {
             }
         }
         .onAppear {
+            spotify.auth = auth
             spotify.startPolling()
         }
         .onDisappear {
@@ -76,7 +78,10 @@ struct MiniPlayerView: View {
             artwork(size: 110)
 
             VStack(alignment: .leading, spacing: 2) {
-                trackInfo
+                HStack(spacing: 6) {
+                    trackInfo
+                    likeButton(size: 12)
+                }
 
                 Spacer().frame(height: 6)
 
@@ -95,15 +100,19 @@ struct MiniPlayerView: View {
             artwork(size: 220)
 
             VStack(spacing: 8) {
-                VStack(spacing: 2) {
-                    Text(spotify.trackName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .lineLimit(1)
+                HStack(spacing: 6) {
+                    VStack(spacing: 2) {
+                        Text(spotify.trackName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .lineLimit(1)
 
-                    Text(spotify.artistName)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        Text(spotify.artistName)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    likeButton(size: 14)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -181,6 +190,20 @@ struct MiniPlayerView: View {
         }
     }
 
+    private func likeButton(size: CGFloat) -> some View {
+        Group {
+            if spotify.auth?.isAuthenticated == true && !spotify.trackID.isEmpty {
+                Button(action: spotify.toggleLike) {
+                    Image(systemName: spotify.isLiked ? "heart.fill" : "heart")
+                        .font(.system(size: size))
+                        .foregroundStyle(spotify.isLiked ? .red : .secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     private var volumeIcon: String {
         if spotify.volume == 0 { return "speaker.slash.fill" }
         if spotify.volume < 33 { return "speaker.wave.1.fill" }
@@ -193,7 +216,7 @@ struct MiniPlayerView: View {
             Image(systemName: "music.note")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text("Spotify is not running")
+            Text("No active playback")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }

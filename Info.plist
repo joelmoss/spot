@@ -20,9 +20,19 @@
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>Spot needs to communicate with Spotify to display the currently playing track.</string>
+
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.joelmoss.spot.oauth</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>spot-app</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
