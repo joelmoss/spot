@@ -38,9 +38,7 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            }
 
-            Section("Spotify Developer") {
                 TextField("Client ID", text: $clientIDText)
                     .font(.system(.body, design: .monospaced))
                     .disabled(auth.isAuthenticated)
@@ -67,8 +65,11 @@ struct SettingsView: View {
                 HStack {
                     Text("Version")
                     Spacer()
-                    Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
-                        .foregroundStyle(.secondary)
+                    Text(
+                        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
+                            as? String ?? "Unknown"
+                    )
+                    .foregroundStyle(.secondary)
                 }
 
                 Button("Check for Updates...") {
@@ -76,10 +77,12 @@ struct SettingsView: View {
                 }
                 .disabled(!updater.canCheckForUpdates)
 
-                Toggle("Automatically check for updates", isOn: Binding(
-                    get: { updater.automaticallyChecksForUpdates },
-                    set: { updater.automaticallyChecksForUpdates = $0 }
-                ))
+                Toggle(
+                    "Automatically check for updates",
+                    isOn: Binding(
+                        get: { updater.automaticallyChecksForUpdates },
+                        set: { updater.automaticallyChecksForUpdates = $0 }
+                    ))
             }
         }
         .formStyle(.grouped)

@@ -14,9 +14,12 @@ final class UpdaterController {
     private var observation: NSKeyValueObservation?
 
     init() {
-        controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
-        observation = updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
-            self?.canCheckForUpdates = updater.canCheckForUpdates
+        let isAppBundle = Bundle.main.bundlePath.hasSuffix(".app")
+        controller = SPUStandardUpdaterController(startingUpdater: isAppBundle, updaterDelegate: nil, userDriverDelegate: nil)
+        if isAppBundle {
+            observation = updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
+                self?.canCheckForUpdates = updater.canCheckForUpdates
+            }
         }
     }
 

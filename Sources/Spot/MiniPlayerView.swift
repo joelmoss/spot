@@ -11,7 +11,7 @@ struct MiniPlayerView: View {
     var body: some View {
         Group {
             if !auth.hasClientID {
-                setupView
+                OnboardingView(auth: auth)
             } else if !auth.isAuthenticated {
                 connectView
             } else if spotify.isSpotifyRunning {
@@ -36,7 +36,7 @@ struct MiniPlayerView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if isHovering {
+            if isHovering && auth.hasClientID {
                 Button {
                     openWindow(id: "settings")
                 } label: {
@@ -50,7 +50,7 @@ struct MiniPlayerView: View {
                 .transition(.opacity)
             }
         }
-        .frame(width: showControls ? 320 : 220, height: showControls ? 110 : 300, alignment: .top)
+        .frame(width: windowWidth, height: windowHeight, alignment: .top)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .onHover { hovering in
@@ -217,36 +217,20 @@ struct MiniPlayerView: View {
         return "speaker.wave.3.fill"
     }
 
-    private var setupView: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "key.fill")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("Client ID Required")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
-            Button("Open Settings") {
-                openWindow(id: "settings")
-            }
-            .controlSize(.small)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private var windowWidth: CGFloat {
+        if !auth.hasClientID { return 300 }
+        if !auth.isAuthenticated { return 220 }
+        return showControls ? 320 : 220
+    }
+
+    private var windowHeight: CGFloat {
+        if !auth.hasClientID { return 380 }
+        if !auth.isAuthenticated { return 160 }
+        return showControls ? 110 : 300
     }
 
     private var connectView: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "music.note")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("Connect to Spotify")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Button("Connect") {
-                auth.authorize()
-            }
-            .controlSize(.small)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ConnectingView(auth: auth)
     }
 
     private var notRunningView: some View {
