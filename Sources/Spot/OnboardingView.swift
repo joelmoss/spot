@@ -13,9 +13,9 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 4) {
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary)
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 64, height: 64)
                 Text("Welcome to Spot")
                     .font(.system(size: 16, weight: .semibold))
                 Text("Connect your Spotify account to get started.")
@@ -24,7 +24,7 @@ struct OnboardingView: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.bottom, 20)
 
             // Steps
             VStack(alignment: .leading, spacing: 10) {

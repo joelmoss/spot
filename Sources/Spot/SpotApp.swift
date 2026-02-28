@@ -74,8 +74,12 @@ struct SpotApp: App {
                     }
                 }
                 .onChange(of: auth.hasClientID) { _, hasID in
-                    if hasID, let window = appDelegate.playerWindow {
+                    if hasID {
                         NSApp.setActivationPolicy(.accessory)
+                    } else if let window = appDelegate.playerWindow {
+                        NSApp.setActivationPolicy(.regular)
+                        NSApp.activate(ignoringOtherApps: true)
+                        window.makeKeyAndOrderFront(nil)
                     }
                 }
         }

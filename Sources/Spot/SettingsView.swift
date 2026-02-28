@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("showControls") private var showControls = true
     @State private var clientIDText = ""
     let auth: SpotifyAuth
@@ -23,6 +24,7 @@ struct SettingsView: View {
                         Button("Disconnect") {
                             auth.disconnect()
                             clientIDText = ""
+                            dismiss()
                         }
                     }
                 } else {

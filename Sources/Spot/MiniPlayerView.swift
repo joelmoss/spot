@@ -218,7 +218,7 @@ struct MiniPlayerView: View {
     }
 
     private var windowWidth: CGFloat {
-        if !auth.hasClientID { return 300 }
+        if !auth.hasClientID { return 340 }
         if !auth.isAuthenticated { return 220 }
         return showControls ? 320 : 220
     }
