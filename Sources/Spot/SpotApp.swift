@@ -65,6 +65,9 @@ struct SpotApp: App {
                         if !auth.hasClientID {
                             makeWindowKeyable(window)
                             NSApp.setActivationPolicy(.regular)
+                            if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources") ?? Bundle.module.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources") {
+                                NSApp.applicationIconImage = NSImage(contentsOf: iconURL)
+                            }
                             NSApp.activate(ignoringOtherApps: true)
                             window.makeKeyAndOrderFront(nil)
                         }

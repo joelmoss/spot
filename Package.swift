@@ -12,7 +12,8 @@ let package = Package(
         .executableTarget(
             name: "Spot",
             dependencies: ["Sparkle"],
-            path: "Sources/Spot"
+            path: "Sources/Spot",
+            resources: [.copy("Resources")]
         ),
         .testTarget(name: "SpotTests", dependencies: ["Spot"], path: "Tests/SpotTests"),
     ]

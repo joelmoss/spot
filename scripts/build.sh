@@ -15,6 +15,7 @@ mkdir -p "${BUNDLE_DIR}/Contents/Frameworks"
 
 cp .build/release/Spot "${BUNDLE_DIR}/Contents/MacOS/Spot"
 cp Info.plist "${BUNDLE_DIR}/Contents/Info.plist"
+cp Sources/Spot/Resources/AppIcon.icns "${BUNDLE_DIR}/Contents/Resources/"
 cp -R .build/release/Sparkle.framework "${BUNDLE_DIR}/Contents/Frameworks/"
 install_name_tool -add_rpath @executable_path/../Frameworks "${BUNDLE_DIR}/Contents/MacOS/Spot"
 
