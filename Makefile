@@ -23,8 +23,11 @@ app: release ## Build release app bundle
 	rm -rf build
 	mkdir -p "$(BUNDLE_DIR)/Contents/MacOS"
 	mkdir -p "$(BUNDLE_DIR)/Contents/Resources"
+	mkdir -p "$(BUNDLE_DIR)/Contents/Frameworks"
 	cp .build/release/$(APP_NAME) "$(BUNDLE_DIR)/Contents/MacOS/$(APP_NAME)"
 	cp Info.plist "$(BUNDLE_DIR)/Contents/Info.plist"
+	cp -R .build/release/Sparkle.framework "$(BUNDLE_DIR)/Contents/Frameworks/"
+	install_name_tool -add_rpath @executable_path/../Frameworks "$(BUNDLE_DIR)/Contents/MacOS/$(APP_NAME)"
 	@echo "App bundle: $(BUNDLE_DIR)"
 
 dmg: app ## Build release DMG
