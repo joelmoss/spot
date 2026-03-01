@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("showControls") private var showControls = true
+    @AppStorage("hideWhenNotPlaying") private var hideWhenNotPlaying = false
     @State private var clientIDText = ""
     let auth: SpotifyAuth
     let updater: UpdaterController
@@ -10,6 +11,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Toggle("Show track controls", isOn: $showControls)
+            Toggle("Hide when not playing", isOn: $hideWhenNotPlaying)
 
             Section("Spotify Account") {
                 if !auth.hasClientID {

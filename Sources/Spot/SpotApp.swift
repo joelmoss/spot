@@ -50,6 +50,7 @@ struct SpotApp: App {
     @State private var spotify = SpotifyController()
     @State private var auth = SpotifyAuth()
     @State private var updater = UpdaterController()
+    @AppStorage("hideWhenNotPlaying") private var hideWhenNotPlaying = false
 
     init() {}
 
@@ -80,6 +81,30 @@ struct SpotApp: App {
                         NSApp.setActivationPolicy(.regular)
                         NSApp.activate(ignoringOtherApps: true)
                         window.makeKeyAndOrderFront(nil)
+                    }
+                }
+                .onChange(of: spotify.hasCheckedPlayback) { _, checked in
+                    guard hideWhenNotPlaying, checked, !spotify.isSpotifyRunning,
+                          auth.hasClientID, auth.isAuthenticated,
+                          let window = appDelegate.playerWindow else { return }
+                    window.orderOut(nil)
+                }
+                .onChange(of: spotify.isSpotifyRunning) { _, isRunning in
+                    guard hideWhenNotPlaying, auth.hasClientID, auth.isAuthenticated,
+                          let window = appDelegate.playerWindow else { return }
+                    if isRunning {
+                        window.orderFront(nil)
+                    } else {
+                        window.orderOut(nil)
+                    }
+                }
+                .onChange(of: hideWhenNotPlaying) { _, hide in
+                    guard auth.hasClientID, auth.isAuthenticated,
+                          let window = appDelegate.playerWindow else { return }
+                    if !hide && !window.isVisible {
+                        window.orderFront(nil)
+                    } else if hide && !spotify.isSpotifyRunning {
+                        window.orderOut(nil)
                     }
                 }
         }

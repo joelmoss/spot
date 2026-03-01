@@ -11,6 +11,7 @@ final class SpotifyController {
     var volume: Double = 50
     var trackID: String = ""
     var isLiked: Bool = false
+    var hasCheckedPlayback: Bool = false
     var auth: (any SpotifyAuthProviding)?
     private var timer: Timer?
     private var isSettingVolume = false
@@ -106,6 +107,7 @@ final class SpotifyController {
     func applyPlaybackState(_ state: PlaybackState?) {
         guard let state else {
             isSpotifyRunning = false
+            hasCheckedPlayback = true
             trackName = ""
             artistName = ""
             artworkURL = nil
@@ -116,6 +118,7 @@ final class SpotifyController {
         }
 
         isSpotifyRunning = true
+        hasCheckedPlayback = true
         trackName = state.trackName
         artistName = state.artistName
         artworkURL = state.artworkURL
