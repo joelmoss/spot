@@ -33,6 +33,11 @@ final class MockSpotifyAuth: SpotifyAuthProviding {
     func setVolume(_ percent: Int) async {
         setVolumeCalls.append(percent)
     }
+
+    var getVolumeResult: Int?
+    func getVolume() -> Int? {
+        getVolumeResult
+    }
 }
 
 @MainActor

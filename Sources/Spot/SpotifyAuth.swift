@@ -24,6 +24,7 @@ protocol SpotifyAuthProviding: AnyObject {
     func nextTrack() async
     func previousTrack() async
     func setVolume(_ percent: Int) async
+    func getVolume() -> Int?
 }
 
 @Observable
@@ -258,9 +259,29 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         await playerRequest(method: "POST", path: "/v1/me/player/previous")
     }
 
+    @MainActor
     func setVolume(_ percent: Int) async {
         let clamped = max(0, min(100, percent))
-        await playerRequest(method: "PUT", path: "/v1/me/player/volume?volume_percent=\(clamped)")
+        let source = "tell application \"Spotify\" to set sound volume to \(clamped)"
+        if let script = NSAppleScript(source: source) {
+            var error: NSDictionary?
+            script.executeAndReturnError(&error)
+            if let error {
+                print("[Spot] AppleScript set volume error: \(error)")
+            }
+        }
+    }
+
+    func getVolume() -> Int? {
+        let source = "tell application \"Spotify\" to get sound volume"
+        guard let script = NSAppleScript(source: source) else { return nil }
+        var error: NSDictionary?
+        let result = script.executeAndReturnError(&error)
+        if let error {
+            print("[Spot] AppleScript get volume error: \(error)")
+            return nil
+        }
+        return Int(result.int32Value)
     }
 
     private func playerRequest(method: String, path: String) async {
