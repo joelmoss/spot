@@ -11,10 +11,12 @@ final class SpotifyController {
     var volume: Double = 50
     var trackID: String = ""
     var isLiked: Bool = false
+    var supportsVolume: Bool = true
     var hasCheckedPlayback: Bool = false
     var auth: (any SpotifyAuthProviding)?
     private var timer: Timer?
     private var isSettingVolume = false
+    private var volumeDebounceTask: Task<Void, Never>?
     private var lastCheckedTrackID: String = ""
 
     func startPolling() {
@@ -50,12 +52,40 @@ final class SpotifyController {
     func setVolume(_ value: Double) {
         isSettingVolume = true
         volume = value
-        guard let auth else { return }
-        Task {
-            await auth.setVolume(Int(value))
-            try? await Task.sleep(nanoseconds: 500_000_000)
+        volumeDebounceTask?.cancel()
+        volumeDebounceTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            let intValue = Int(value)
+            await Self.setVolumeViaAppleScript(intValue)
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
             await MainActor.run { self.isSettingVolume = false }
         }
+    }
+
+    @MainActor
+    private static func setVolumeViaAppleScript(_ percent: Int) {
+        let source = "tell application \"Spotify\" to set sound volume to \(percent)"
+        if let script = NSAppleScript(source: source) {
+            var error: NSDictionary?
+            script.executeAndReturnError(&error)
+            if let error {
+                print("[Spot] AppleScript set volume error: \(error)")
+            }
+        }
+    }
+
+    private static func getVolumeViaAppleScript() -> Int? {
+        let source = "tell application \"Spotify\" to get sound volume"
+        guard let script = NSAppleScript(source: source) else { return nil }
+        var error: NSDictionary?
+        let result = script.executeAndReturnError(&error)
+        if let error {
+            print("[Spot] AppleScript get volume error: \(error)")
+            return nil
+        }
+        return Int(result.int32Value)
     }
 
     func togglePlayPause() {
@@ -123,8 +153,9 @@ final class SpotifyController {
         artistName = state.artistName
         artworkURL = state.artworkURL
         isPlaying = state.isPlaying
+        supportsVolume = state.supportsVolume
         if !isSettingVolume {
-            volume = Double(state.volume)
+            volume = Double(Self.getVolumeViaAppleScript() ?? state.volume)
         }
 
         let newTrackID = state.trackID

@@ -10,6 +10,7 @@ struct PlaybackState {
     let isPlaying: Bool
     let volume: Int
     let trackID: String
+    let supportsVolume: Bool
 }
 
 protocol SpotifyAuthProviding: AnyObject {
@@ -215,12 +216,16 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
             // Extract track ID from URI (spotify:track:XXXX)
             let trackID = uri.replacingOccurrences(of: "spotify:track:", with: "")
 
-            // Get volume from device info
+            // Get volume and device capabilities
             var volume = 50
-            if let device = json["device"] as? [String: Any],
-                let vol = device["volume_percent"] as? Int
-            {
-                volume = vol
+            var supportsVolume = true
+            if let device = json["device"] as? [String: Any] {
+                if let vol = device["volume_percent"] as? Int {
+                    volume = vol
+                }
+                if let supports = device["supports_volume"] as? Bool {
+                    supportsVolume = supports
+                }
             }
 
             return PlaybackState(
@@ -229,7 +234,8 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
                 artworkURL: artworkURL,
                 isPlaying: isPlaying,
                 volume: volume,
-                trackID: trackID
+                trackID: trackID,
+                supportsVolume: supportsVolume
             )
         } catch {
             return nil
