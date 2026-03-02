@@ -435,8 +435,7 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         UserDefaults.standard.removeObject(forKey: StorageKey.tokenExpiry)
     }
 
-    @MainActor
-    private func handleTokenResponse(_ data: Data) {
+    private func handleTokenResponse(_ data: Data) async {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let access = json["access_token"] as? String,
             let expiresIn = json["expires_in"] as? Int
@@ -444,16 +443,20 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
             return
         }
 
-        self.accessToken = access
-        self.tokenExpiry = Date().addingTimeInterval(TimeInterval(expiresIn - 60))
+        let refresh = json["refresh_token"] as? String
 
-        if let refresh = json["refresh_token"] as? String {
-            self.refreshToken = refresh
-            UserDefaults.standard.set(refresh, forKey: StorageKey.refreshToken)
+        await MainActor.run {
+            self.accessToken = access
+            self.tokenExpiry = Date().addingTimeInterval(TimeInterval(expiresIn - 60))
+
+            if let refresh {
+                self.refreshToken = refresh
+                UserDefaults.standard.set(refresh, forKey: StorageKey.refreshToken)
+            }
+
+            UserDefaults.standard.set(access, forKey: StorageKey.accessToken)
+            UserDefaults.standard.set(self.tokenExpiry, forKey: StorageKey.tokenExpiry)
         }
-
-        UserDefaults.standard.set(access, forKey: StorageKey.accessToken)
-        UserDefaults.standard.set(self.tokenExpiry, forKey: StorageKey.tokenExpiry)
     }
 
     // MARK: - PKCE Helpers
