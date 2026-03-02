@@ -241,6 +241,19 @@ struct MiniPlayerView: View {
             Text("No active playback")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
+            if let until = auth.rateLimitedUntil, until > Date() {
+                let total = Int(ceil(until.timeIntervalSinceNow))
+                let label = if total >= 3600 {
+                    "\(total / 3600) hr"
+                } else if total >= 60 {
+                    "\(Int(ceil(Double(total) / 60))) min"
+                } else {
+                    "\(total) sec"
+                }
+                Text("Rate limited — retrying in \(label)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

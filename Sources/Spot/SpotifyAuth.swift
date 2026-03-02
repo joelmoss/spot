@@ -42,6 +42,7 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     private var tokenExpiry: Date?
     private var codeVerifier: String?
     private var authSession: ASWebAuthenticationSession?
+    private(set) var rateLimitedUntil: Date?
 
     // MARK: - Keys
     // Bump this when scopes or auth requirements change to force re-authorization
@@ -156,21 +157,42 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     // MARK: - Playback API
 
     func getCurrentPlayback() async -> PlaybackState? {
+        // Skip if rate-limited
+        if let until = rateLimitedUntil, Date() < until { return nil }
+
         guard let token = await validToken() else { return nil }
 
         var request = URLRequest(
-            url: URL(string: "https://api.spotify.com/v1/me/player/currently-playing")!)
+            url: URL(string: "https://api.spotify.com/v1/me/player")!)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let httpResponse = response as? HTTPURLResponse
+            let status = httpResponse?.statusCode ?? -1
+
+            // 429 = rate limited — back off
+            if status == 429 {
+                let retryAfter = httpResponse?.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Double.init) ?? 5
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+                return nil
+            }
+
+            // 401 = token is invalid — clear it so we re-authenticate
+            if status == 401 {
+                await MainActor.run { clearTokens() }
+                return nil
+            }
 
             // 204 = no active playback
             guard status == 200 else { return nil }
 
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let isPlaying = json["is_playing"] as? Bool,
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return nil
+            }
+
+            guard let isPlaying = json["is_playing"] as? Bool,
                 let item = json["item"] as? [String: Any],
                 let name = item["name"] as? String,
                 let uri = item["uri"] as? String
@@ -363,8 +385,27 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         ].joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
 
-        guard let (data, _) = try? await URLSession.shared.data(for: request) else { return }
+        guard let (data, response) = try? await URLSession.shared.data(for: request) else {
+            await MainActor.run { clearTokens() }
+            return
+        }
+
+        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        if status != 200 {
+            await MainActor.run { clearTokens() }
+            return
+        }
+
         await handleTokenResponse(data)
+    }
+
+    private func clearTokens() {
+        accessToken = nil
+        refreshToken = nil
+        tokenExpiry = nil
+        UserDefaults.standard.removeObject(forKey: StorageKey.accessToken)
+        UserDefaults.standard.removeObject(forKey: StorageKey.refreshToken)
+        UserDefaults.standard.removeObject(forKey: StorageKey.tokenExpiry)
     }
 
     @MainActor

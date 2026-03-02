@@ -19,7 +19,7 @@ final class SpotifyController {
 
     func startPolling() {
         fetchCurrentTrack()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             self?.fetchCurrentTrack()
         }
     }
