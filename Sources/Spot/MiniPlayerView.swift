@@ -6,7 +6,6 @@ struct MiniPlayerView: View {
     let spotify: SpotifyController
     let auth: SpotifyAuth
     @State private var isHovering = false
-    @AppStorage("showControls") private var showControls = true
 
     var body: some View {
         Group {
@@ -68,39 +67,6 @@ struct MiniPlayerView: View {
     }
 
     private var playerView: some View {
-        Group {
-            if showControls {
-                horizontalLayout
-            } else {
-                verticalLayout
-            }
-        }
-    }
-
-    private var horizontalLayout: some View {
-        HStack(spacing: 0) {
-            artwork(size: 110)
-                .overlay(alignment: .bottomTrailing) {
-                    likeButton(size: 12)
-                        .padding(6)
-                }
-
-            VStack(alignment: .leading, spacing: 2) {
-                trackInfo
-
-                Spacer().frame(height: 6)
-
-                volumeSlider
-            }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            controls
-                .padding(.trailing, 12)
-        }
-    }
-
-    private var verticalLayout: some View {
         VStack(spacing: 0) {
             artwork(size: 220)
                 .overlay(alignment: .bottomTrailing) {
@@ -145,19 +111,6 @@ struct MiniPlayerView: View {
         .clipped()
     }
 
-    private var trackInfo: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(spotify.trackName)
-                .font(.system(size: 13, weight: .semibold))
-                .lineLimit(1)
-
-            Text(spotify.artistName)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-    }
-
     private var volumeSlider: some View {
         HStack(spacing: 4) {
             Image(systemName: volumeIcon)
@@ -170,28 +123,6 @@ struct MiniPlayerView: View {
                 set: { spotify.setVolume($0) }
             ), in: 0...100)
             .controlSize(.mini)
-        }
-    }
-
-    private var controls: some View {
-        HStack(spacing: 4) {
-            Button(action: spotify.previousTrack) {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 14))
-            }
-            .buttonStyle(.plain)
-
-            Button(action: spotify.togglePlayPause) {
-                Image(systemName: spotify.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 18))
-            }
-            .buttonStyle(.plain)
-
-            Button(action: spotify.nextTrack) {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 14))
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -220,13 +151,13 @@ struct MiniPlayerView: View {
     private var windowWidth: CGFloat {
         if !auth.hasClientID { return 340 }
         if !auth.isAuthenticated { return 220 }
-        return showControls ? 320 : 220
+        return 220
     }
 
     private var windowHeight: CGFloat {
         if !auth.hasClientID { return 380 }
         if !auth.isAuthenticated { return 160 }
-        return showControls ? 110 : 300
+        return 300
     }
 
     private var connectView: some View {

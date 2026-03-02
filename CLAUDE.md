@@ -30,9 +30,9 @@ This repo uses Jujutsu (`.jj` directory). Use `jj` commands instead of `git`.
 
 **SpotifyAuth.swift** — OAuth 2.0 PKCE flow against Spotify's API. Manages token lifecycle (store in UserDefaults, auto-refresh). Handles `spot-app://callback` URL scheme redirects. Provides all Spotify Web API calls: playback control (`/me/player/*`), current track polling (`/me/player/currently-playing`), and library operations (`/me/library`). Requires Spotify Premium for playback control.
 
-**MiniPlayerView.swift** — Main UI. Two layout modes controlled by `@AppStorage("showControls")`: horizontal (320×110) and vertical (220×310). Shows artwork, track info, volume slider, playback controls, and like button (when authenticated).
+**MiniPlayerView.swift** — Main UI. Vertical layout (220×300) showing artwork, track info, volume slider, and like button (when authenticated).
 
-**SettingsView.swift** — Preferences panel. Layout toggle and Spotify account connection status/controls.
+**SettingsView.swift** — Preferences panel. Spotify account connection status/controls.
 
 ## Key Patterns
 
