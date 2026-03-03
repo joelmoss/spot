@@ -51,6 +51,7 @@ struct SpotApp: App {
     @State private var auth = SpotifyAuth()
     @State private var updater = UpdaterController()
     @AppStorage("hideWhenNotPlaying") private var hideWhenNotPlaying = false
+    @Environment(\.openWindow) private var openWindow
 
     init() {}
 
@@ -114,6 +115,37 @@ struct SpotApp: App {
             SettingsView(auth: auth, updater: updater)
         }
         .windowResizability(.contentSize)
+
+        MenuBarExtra {
+            Button("Preferences...") {
+                openSettings()
+            }
+            .keyboardShortcut(",", modifiers: .command)
+            Divider()
+            Button("Quit Spot") {
+                NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q", modifiers: .command)
+        } label: {
+            Image(nsImage: menuBarIcon())
+        }
+    }
+
+    private func menuBarIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources")
+            ?? Bundle.module.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources"),
+           let icon = NSImage(contentsOf: url)
+        {
+            icon.size = size
+            return icon
+        }
+        return NSImage(systemSymbolName: "music.note", accessibilityDescription: "Spot")
+            ?? NSImage()
+    }
+
+    private func openSettings() {
+        openWindow(id: "settings")
     }
 
     private func configurePlayerWindow(_ window: NSWindow) {

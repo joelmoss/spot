@@ -2,10 +2,8 @@ import SwiftUI
 import AppKit
 
 struct MiniPlayerView: View {
-    @Environment(\.openWindow) private var openWindow
     let spotify: SpotifyController
     let auth: SpotifyAuth
-    @State private var isHovering = false
 
     var body: some View {
         Group {
@@ -19,44 +17,9 @@ struct MiniPlayerView: View {
                 notRunningView
             }
         }
-        .overlay(alignment: .topLeading) {
-            if isHovering {
-                Button {
-                    NSApplication.shared.terminate(nil)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .background(Circle().fill(.ultraThickMaterial).frame(width: 12, height: 12))
-                }
-                .buttonStyle(.plain)
-                .padding(6)
-                .transition(.opacity)
-            }
-        }
-        .overlay(alignment: .topTrailing) {
-            if isHovering && auth.hasClientID {
-                Button {
-                    openWindow(id: "settings")
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .background(Circle().fill(.ultraThickMaterial).frame(width: 12, height: 12))
-                }
-                .buttonStyle(.plain)
-                .padding(6)
-                .transition(.opacity)
-            }
-        }
         .frame(width: windowWidth, height: windowHeight, alignment: .top)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isHovering = hovering
-            }
-        }
         .onAppear {
             spotify.auth = auth
             spotify.startPolling()
