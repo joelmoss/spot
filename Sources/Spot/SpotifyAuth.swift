@@ -15,6 +15,7 @@ struct PlaybackState {
 
 protocol SpotifyAuthProviding: AnyObject {
     var isAuthenticated: Bool { get }
+    var rateLimitedUntil: Date? { get }
     func checkIfLiked(trackID: String) async -> Bool
     func saveTrack(trackID: String) async -> Bool
     func removeTrack(trackID: String) async -> Bool
@@ -285,6 +286,8 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     private func playerRequest(method: String, path: String) async {
+        if let until = rateLimitedUntil, Date() < until { return }
+
         guard let token = await validToken() else { return }
 
         var request = URLRequest(
@@ -293,12 +296,21 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        _ = try? await URLSession.shared.data(for: request)
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 429 {
+                let retryAfter = httpResponse.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Double.init) ?? 5
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+            }
+        } catch {}
     }
 
     // MARK: - Library API
 
     func checkIfLiked(trackID: String) async -> Bool {
+        if let until = rateLimitedUntil, Date() < until { return false }
+
         guard let token = await validToken() else { return false }
 
         let uri = "spotify:track:\(trackID)"
@@ -310,7 +322,16 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let httpResponse = response as? HTTPURLResponse
+            let status = httpResponse?.statusCode ?? -1
+
+            if status == 429 {
+                let retryAfter = httpResponse?.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Double.init) ?? 5
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+                return false
+            }
+
             guard status == 200,
                 let result = try? JSONDecoder().decode([Bool].self, from: data),
                 let isLiked = result.first
@@ -324,6 +345,8 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     func saveTrack(trackID: String) async -> Bool {
+        if let until = rateLimitedUntil, Date() < until { return false }
+
         guard let token = await validToken() else { return false }
 
         let uri = "spotify:track:\(trackID)"
@@ -336,7 +359,16 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
 
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let httpResponse = response as? HTTPURLResponse
+            let status = httpResponse?.statusCode ?? -1
+
+            if status == 429 {
+                let retryAfter = httpResponse?.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Double.init) ?? 5
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+                return false
+            }
+
             return (200...299).contains(status)
         } catch {
             return false
@@ -344,6 +376,8 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
     }
 
     func removeTrack(trackID: String) async -> Bool {
+        if let until = rateLimitedUntil, Date() < until { return false }
+
         guard let token = await validToken() else { return false }
 
         let uri = "spotify:track:\(trackID)"
@@ -356,7 +390,16 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
 
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let httpResponse = response as? HTTPURLResponse
+            let status = httpResponse?.statusCode ?? -1
+
+            if status == 429 {
+                let retryAfter = httpResponse?.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Double.init) ?? 5
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter)
+                return false
+            }
+
             return (200...299).contains(status)
         } catch {
             return false

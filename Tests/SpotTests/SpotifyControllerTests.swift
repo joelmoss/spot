@@ -4,6 +4,7 @@ import XCTest
 
 final class MockSpotifyAuth: SpotifyAuthProviding {
     var isAuthenticated: Bool = true
+    var rateLimitedUntil: Date?
     var checkIfLikedResult: Bool = false
     var saveTrackResult: Bool = true
     var removeTrackResult: Bool = true

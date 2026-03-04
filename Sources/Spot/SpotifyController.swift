@@ -17,12 +17,15 @@ final class SpotifyController {
     private var isSettingVolume = false
     private var volumeDebounceTask: Task<Void, Never>?
     private var lastCheckedTrackID: String = ""
+    private var currentPollingInterval: TimeInterval = 5.0
+
+    private static let playingInterval: TimeInterval = 5.0
+    private static let pausedInterval: TimeInterval = 15.0
+    private static let inactiveInterval: TimeInterval = 30.0
 
     func startPolling() {
         fetchCurrentTrack()
-        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
-            self?.fetchCurrentTrack()
-        }
+        scheduleTimer(interval: Self.playingInterval)
     }
 
     func stopPolling() {
@@ -34,8 +37,7 @@ final class SpotifyController {
         guard let auth else { return }
         Task {
             await auth.nextTrack()
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            await MainActor.run { self.fetchCurrentTrack() }
+            await MainActor.run { self.resetTimer(after: 0.5) }
         }
     }
 
@@ -43,8 +45,7 @@ final class SpotifyController {
         guard let auth else { return }
         Task {
             await auth.previousTrack()
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            await MainActor.run { self.fetchCurrentTrack() }
+            await MainActor.run { self.resetTimer(after: 0.5) }
         }
     }
 
@@ -71,8 +72,7 @@ final class SpotifyController {
             } else {
                 await auth.play()
             }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            await MainActor.run { self.fetchCurrentTrack() }
+            await MainActor.run { self.resetTimer(after: 0.5) }
         }
     }
 
@@ -98,6 +98,14 @@ final class SpotifyController {
     private func fetchCurrentTrack() {
         guard let auth, auth.isAuthenticated else {
             isSpotifyRunning = false
+            updatePollingInterval(for: nil)
+            return
+        }
+
+        // If rate-limited, skip and schedule next poll for when rate limit expires
+        if let until = auth.rateLimitedUntil, Date() < until {
+            let delay = until.timeIntervalSinceNow + 0.5
+            resetTimer(after: max(1.0, delay))
             return
         }
 
@@ -105,6 +113,7 @@ final class SpotifyController {
             let state = await auth.getCurrentPlayback()
             await MainActor.run {
                 self.applyPlaybackState(state)
+                self.updatePollingInterval(for: state)
             }
         }
     }
@@ -139,6 +148,37 @@ final class SpotifyController {
             checkIfLiked()
         } else if lastCheckedTrackID != trackID {
             checkIfLiked()
+        }
+    }
+
+    private func updatePollingInterval(for state: PlaybackState?) {
+        let newInterval: TimeInterval
+        if let state {
+            newInterval = state.isPlaying ? Self.playingInterval : Self.pausedInterval
+        } else {
+            newInterval = Self.inactiveInterval
+        }
+
+        if newInterval != currentPollingInterval {
+            scheduleTimer(interval: newInterval)
+        }
+    }
+
+    private func scheduleTimer(interval: TimeInterval) {
+        timer?.invalidate()
+        currentPollingInterval = interval
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.fetchCurrentTrack()
+        }
+    }
+
+    /// Resets the timer so the next poll fires after `delay` seconds, then resumes normal interval.
+    private func resetTimer(after delay: TimeInterval) {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.fetchCurrentTrack()
+            self.scheduleTimer(interval: self.currentPollingInterval)
         }
     }
 
