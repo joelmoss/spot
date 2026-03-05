@@ -36,11 +36,13 @@ jobs:
           cp Info.plist "${APP_BUNDLE}/Contents/Info.plist"
           cp Sources/Spot/Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/"
 
-          SPARKLE_PATH=$(find .build -path "*/artifacts/Sparkle/Sparkle.framework" -type d | head -1)
-          if [ -n "$SPARKLE_PATH" ]; then
-            cp -R "$SPARKLE_PATH" "${APP_BUNDLE}/Contents/Frameworks/"
-            install_name_tool -add_rpath @executable_path/../Frameworks "${APP_BUNDLE}/Contents/MacOS/Spot"
+          SPARKLE_PATH=$(find .build -name "Sparkle.framework" -type d | head -1)
+          if [ -z "$SPARKLE_PATH" ]; then
+            echo "::error::Sparkle.framework not found in .build"
+            exit 1
           fi
+          cp -R "$SPARKLE_PATH" "${APP_BUNDLE}/Contents/Frameworks/"
+          install_name_tool -add_rpath @executable_path/../Frameworks "${APP_BUNDLE}/Contents/MacOS/Spot"
 
       - name: Import signing certificate
         env:
