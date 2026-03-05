@@ -38,7 +38,7 @@ jobs:
 
           RESOURCE_BUNDLE=$(find .build -name "Spot_Spot.bundle" -type d | head -1)
           if [ -n "$RESOURCE_BUNDLE" ]; then
-            cp -R "$RESOURCE_BUNDLE" "${APP_BUNDLE}/Contents/Resources/"
+            cp -R "$RESOURCE_BUNDLE" "${APP_BUNDLE}/"
           fi
 
           SPARKLE_PATH=$(find .build -name "Sparkle.framework" -type d | head -1)
