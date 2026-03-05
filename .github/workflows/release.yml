@@ -169,10 +169,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cp appcast.xml /tmp/appcast.xml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
+          cp /tmp/appcast.xml appcast.xml
           git add appcast.xml
           git commit -m "Update appcast.xml for ${GITHUB_REF_NAME}"
           git push origin main
