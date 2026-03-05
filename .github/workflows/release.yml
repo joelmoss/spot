@@ -127,12 +127,12 @@ jobs:
           # Find sign_update tool from Sparkle build artifacts
           SIGN_UPDATE=$(find .build -name "sign_update" -type f | head -1)
 
+          SPARKLE_ATTRS=""
           if [ -n "$SIGN_UPDATE" ]; then
             chmod +x "$SIGN_UPDATE"
-            SIGNATURE=$( echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" build/Spot.zip -f - )
+            SPARKLE_ATTRS=$( echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" build/Spot.zip -f - )
           else
             echo "::warning::sign_update not found — appcast will lack EdDSA signature"
-            SIGNATURE=""
           fi
 
           cat > appcast.xml <<EOF
@@ -148,7 +148,7 @@ jobs:
                 <sparkle:version>${VERSION}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                 <pubDate>$(date -R)</pubDate>
-                <enclosure url="${DOWNLOAD_URL}" length="${FILE_SIZE}" type="application/octet-stream" sparkle:edSignature="${SIGNATURE}" />
+                <enclosure url="${DOWNLOAD_URL}" type="application/octet-stream" ${SPARKLE_ATTRS} />
               </item>
             </channel>
           </rss>
