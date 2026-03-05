@@ -13,7 +13,7 @@ let package = Package(
             name: "Spot",
             dependencies: ["Sparkle"],
             path: "Sources/Spot",
-            resources: [.copy("Resources")]
+            exclude: ["Resources"]
         ),
         .testTarget(name: "SpotTests", dependencies: ["Spot"], path: "Tests/SpotTests"),
     ]

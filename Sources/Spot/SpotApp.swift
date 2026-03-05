@@ -67,7 +67,7 @@ struct SpotApp: App {
                         if !auth.hasClientID {
                             makeWindowKeyable(window)
                             NSApp.setActivationPolicy(.regular)
-                            if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources") ?? Bundle.module.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources") {
+                            if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") ?? Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources") {
                                 NSApp.applicationIconImage = NSImage(contentsOf: iconURL)
                             }
                             NSApp.activate(ignoringOtherApps: true)
@@ -133,8 +133,8 @@ struct SpotApp: App {
 
     private func menuBarIcon() -> NSImage {
         let size = NSSize(width: 18, height: 18)
-        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources")
-            ?? Bundle.module.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources"),
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns")
+            ?? Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources"),
            let icon = NSImage(contentsOf: url)
         {
             icon.size = size
