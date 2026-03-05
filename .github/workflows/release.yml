@@ -31,15 +31,54 @@ jobs:
           APP_BUNDLE="build/Spot.app"
           mkdir -p "${APP_BUNDLE}/Contents/MacOS"
           mkdir -p "${APP_BUNDLE}/Contents/Resources"
+          mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
           cp build/Spot "${APP_BUNDLE}/Contents/MacOS/Spot"
           cp Info.plist "${APP_BUNDLE}/Contents/Info.plist"
+          cp Sources/Spot/Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/"
 
-          # Copy Sparkle framework into the app bundle
           SPARKLE_PATH=$(find .build -path "*/artifacts/Sparkle/Sparkle.framework" -type d | head -1)
           if [ -n "$SPARKLE_PATH" ]; then
-            mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
             cp -R "$SPARKLE_PATH" "${APP_BUNDLE}/Contents/Frameworks/"
+            install_name_tool -add_rpath @executable_path/../Frameworks "${APP_BUNDLE}/Contents/MacOS/Spot"
           fi
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+          echo "$CERTIFICATE_P12" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+      - name: Sign app bundle
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          IDENTITY="Developer ID Application: Joel Moss (${TEAM_ID})"
+          APP_BUNDLE="build/Spot.app"
+
+          # Sign Sparkle framework components inside-out
+          codesign --force --options runtime --timestamp \
+            --sign "$IDENTITY" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework"
+
+          # Sign the app
+          codesign --force --options runtime --timestamp \
+            --sign "$IDENTITY" \
+            --entitlements scripts/entitlements.plist \
+            "${APP_BUNDLE}"
+
+          codesign --verify --deep --strict "${APP_BUNDLE}"
 
       - name: Create DMG
         run: |
@@ -48,6 +87,27 @@ jobs:
             -ov -format UDZO \
             "build/Spot.dmg" \
             -quiet
+
+      - name: Sign DMG
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          codesign --force --timestamp \
+            --sign "Developer ID Application: Joel Moss (${TEAM_ID})" \
+            build/Spot.dmg
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit build/Spot.dmg \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+          xcrun stapler staple build/Spot.dmg
 
       - name: Create ZIP for Sparkle
         run: |
@@ -103,8 +163,7 @@ jobs:
             ## Installation
 
             1. Download **Spot.dmg** and drag Spot to Applications
-            2. On first launch, **right-click** Spot.app and select **Open** (required once for unsigned apps)
-            3. Subsequent launches work normally
+            2. Launch Spot from Applications
 
       - name: Update appcast on main
         env:
