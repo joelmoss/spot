@@ -16,11 +16,18 @@ swift build && swift run Spot
 ./scripts/build.sh
 ```
 
-No external dependencies — uses only SwiftUI, AppKit, Foundation, CryptoKit, and URLSession.
+Dependencies: Sparkle 2 (auto-updater framework). Otherwise uses only SwiftUI, AppKit, Foundation, CryptoKit, and URLSession.
 
-## Version Control
+## Release Process
 
-This repo uses Jujutsu (`.jj` directory). Use `jj` commands instead of `git`.
+Bump version in `Info.plist` (both `CFBundleVersion` and `CFBundleShortVersionString`), commit, tag with `v*`, and push. The GitHub Actions release workflow (`release.yml`) builds a universal binary (arm64 + x86_64), signs with Developer ID, notarizes with Apple, creates a GitHub release with DMG + ZIP, and updates `appcast.xml` on main for Sparkle.
+
+## Code Signing
+
+- **Team ID**: `B898J443L9`, identity: `Developer ID Application: Joel Moss`
+- Local signing: `scripts/build.sh` handles signing, notarization, and stapling
+- CI signing: certificate imported from `CERTIFICATE_P12` secret; notarization via `APPLE_ID` + `APPLE_ID_PASSWORD` secrets
+- Entitlements in `scripts/entitlements.plist` (network client + unsigned executable memory for Sparkle)
 
 ## Architecture
 
@@ -36,6 +43,9 @@ This repo uses Jujutsu (`.jj` directory). Use `jj` commands instead of `git`.
 
 ## Key Patterns
 
+- **No SPM resource bundle** — `Package.swift` uses `exclude: ["Resources"]` instead of `.copy("Resources")`. The app icon is copied manually into `Contents/Resources/` during the build. This avoids SPM's `Bundle.module` accessor which doesn't work correctly in `.app` bundles (it looks in the bundle root, but code signing requires everything inside `Contents/`).
+- **Sparkle framework** must be signed inside-out (XPC services, then Autoupdate/Updater.app, then the framework itself) before signing the app bundle
+- **Sparkle `sign_update` tool** outputs `sparkle:edSignature="..." length="..."` as a complete attribute string — don't wrap it in another attribute
 - **All Spotify interaction via Web API** — requires OAuth authentication and Spotify Premium. No AppleScript.
 - **Spotify Feb 2026 API**: Library endpoints (`/me/library`, `/me/library/contains`) use `uris` as query parameters, not JSON body
 - **`@Observable` macro** (Swift 5.10+) for reactive state in SpotifyController and SpotifyAuth
