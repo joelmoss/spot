@@ -62,15 +62,15 @@ jobs:
         run: |
           IDENTITY="Developer ID Application: Joel Moss (${TEAM_ID})"
           APP_BUNDLE="build/Spot.app"
+          SPARKLE_FW="${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework"
 
-          # Sign Sparkle framework components inside-out
-          codesign --force --options runtime --timestamp \
-            --sign "$IDENTITY" \
-            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" \
-            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" \
-            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" \
-            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" \
-            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework"
+          # Sign Sparkle framework components inside-out (if present)
+          if [ -d "$SPARKLE_FW" ]; then
+            find "$SPARKLE_FW" -type f -perm +111 -o -name "*.xpc" -o -name "*.app" | while read item; do
+              codesign --force --options runtime --timestamp --sign "$IDENTITY" "$item" 2>/dev/null || true
+            done
+            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE_FW"
+          fi
 
           # Sign the app
           codesign --force --options runtime --timestamp \
