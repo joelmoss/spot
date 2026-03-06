@@ -66,20 +66,13 @@ struct SpotApp: App {
                         configurePlayerWindow(window)
                         if !auth.hasClientID {
                             makeWindowKeyable(window)
-                            NSApp.setActivationPolicy(.regular)
-                            if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") ?? Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources") {
-                                NSApp.applicationIconImage = NSImage(contentsOf: iconURL)
-                            }
                             NSApp.activate(ignoringOtherApps: true)
                             window.makeKeyAndOrderFront(nil)
                         }
                     }
                 }
                 .onChange(of: auth.hasClientID) { _, hasID in
-                    if hasID {
-                        NSApp.setActivationPolicy(.accessory)
-                    } else if let window = appDelegate.playerWindow {
-                        NSApp.setActivationPolicy(.regular)
+                    if !hasID, let window = appDelegate.playerWindow {
                         NSApp.activate(ignoringOtherApps: true)
                         window.makeKeyAndOrderFront(nil)
                     }
@@ -132,19 +125,25 @@ struct SpotApp: App {
     }
 
     private func menuBarIcon() -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns")
-            ?? Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources"),
-           let icon = NSImage(contentsOf: url)
+        let icon: NSImage
+        // In .app bundle, resources are in Contents/Resources/
+        // During swift run, fall back to the source tree path (relative to cwd)
+        let bundleURL = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png")
+        let devURL = URL(fileURLWithPath: "Sources/Spot/Resources/MenuBarIcon@2x.png").standardized
+        if let url = bundleURL ?? (FileManager.default.fileExists(atPath: devURL.path) ? devURL : nil),
+           let img = NSImage(contentsOf: url)
         {
-            icon.size = size
-            return icon
+            icon = img
+        } else {
+            icon = NSImage(systemSymbolName: "music.note", accessibilityDescription: "Spot") ?? NSImage()
         }
-        return NSImage(systemSymbolName: "music.note", accessibilityDescription: "Spot")
-            ?? NSImage()
+        icon.size = NSSize(width: 18, height: 18)
+        icon.isTemplate = true
+        return icon
     }
 
     private func openSettings() {
+        NSApp.activate(ignoringOtherApps: true)
         openWindow(id: "settings")
     }
 

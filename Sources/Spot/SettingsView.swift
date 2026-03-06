@@ -93,16 +93,12 @@ struct SettingsView: View {
         .fixedSize()
         .onAppear {
             clientIDText = auth.clientID ?? ""
-            NSApp.setActivationPolicy(.regular)
             DispatchQueue.main.async {
                 NSApp.activate(ignoringOtherApps: true)
                 for window in NSApp.windows where window != NSApp.windows.first {
                     window.makeKeyAndOrderFront(nil)
                 }
             }
-        }
-        .onDisappear {
-            NSApp.setActivationPolicy(.accessory)
         }
     }
 }

@@ -35,6 +35,7 @@ jobs:
           cp build/Spot "${APP_BUNDLE}/Contents/MacOS/Spot"
           cp Info.plist "${APP_BUNDLE}/Contents/Info.plist"
           cp Sources/Spot/Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/"
+          cp Sources/Spot/Resources/MenuBarIcon*.png "${APP_BUNDLE}/Contents/Resources/"
 
           SPARKLE_PATH=$(find .build -name "Sparkle.framework" -type d | head -1)
           if [ -z "$SPARKLE_PATH" ]; then
