@@ -9,8 +9,8 @@
       <title>Version 1.4.4</title>
       <sparkle:version>1.4.4</sparkle:version>
       <sparkle:shortVersionString>1.4.4</sparkle:shortVersionString>
-      <pubDate>Thu, 05 Mar 2026 23:54:09 +0000</pubDate>
-      <enclosure url="https://github.com/joelmoss/spot/releases/download/v1.4.4/Spot.zip" type="application/octet-stream" sparkle:edSignature="tFyD5blbC9F/BdWV74y//QIlPXs+8vdNHXzCaFO8/qG6Gh+ulOlW9rbIezJlg9J+vG6FNeaHiQ5bQ7LRGqrNCA==" length="1698462" />
+      <pubDate>Fri, 06 Mar 2026 00:07:04 +0000</pubDate>
+      <enclosure url="https://github.com/joelmoss/spot/releases/download/v1.4.4/Spot.zip" type="application/octet-stream" sparkle:edSignature="HRW7yK7OgjJ2LtnrABrw+/cbuaDddrYWNFwks+9PWOwCeGrTeGNVXEgQJPytS1ctxMiklAU38XfKBAcwFccXAw==" length="1698508" />
     </item>
   </channel>
 </rss>
