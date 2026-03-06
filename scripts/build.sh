@@ -44,11 +44,23 @@ codesign --verify --deep --strict --verbose=2 "${BUNDLE_DIR}"
 echo "Creating DMG..."
 DMG_PATH="build/${APP_NAME}.dmg"
 rm -f "${DMG_PATH}"
-hdiutil create -volname "${APP_NAME}" \
-    -srcfolder "${BUNDLE_DIR}" \
-    -ov -format UDZO \
+set +e
+create-dmg \
+    --volname "${APP_NAME}" \
+    --window-pos 200 120 \
+    --window-size 660 400 \
+    --icon-size 160 \
+    --icon "${APP_NAME}.app" 180 170 \
+    --app-drop-link 480 170 \
+    --hide-extension "${APP_NAME}.app" \
     "${DMG_PATH}" \
-    -quiet
+    "${BUNDLE_DIR}"
+CREATE_DMG_EXIT=$?
+set -e
+if [ $CREATE_DMG_EXIT -ne 0 ] && [ $CREATE_DMG_EXIT -ne 2 ]; then
+    echo "create-dmg failed with exit code $CREATE_DMG_EXIT"
+    exit $CREATE_DMG_EXIT
+fi
 
 echo "Signing DMG..."
 codesign --force --timestamp \

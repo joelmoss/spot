@@ -82,13 +82,28 @@ jobs:
 
           codesign --verify --deep --strict "${APP_BUNDLE}"
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
       - name: Create DMG
         run: |
-          hdiutil create -volname "Spot" \
-            -srcfolder "build/Spot.app" \
-            -ov -format UDZO \
+          set +e
+          create-dmg \
+            --volname "Spot" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 160 \
+            --icon "Spot.app" 180 170 \
+            --app-drop-link 480 170 \
+            --hide-extension "Spot.app" \
             "build/Spot.dmg" \
-            -quiet
+            "build/Spot.app"
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 2 ]; then
+            echo "create-dmg failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
       - name: Sign DMG
         env:
