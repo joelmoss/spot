@@ -6,11 +6,11 @@
     <description>Spot updates</description>
     <language>en</language>
     <item>
-      <title>Version 1.5.0</title>
-      <sparkle:version>1.5.0</sparkle:version>
-      <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
-      <pubDate>Fri, 06 Mar 2026 00:36:36 +0000</pubDate>
-      <enclosure url="https://github.com/joelmoss/spot/releases/download/v1.5.0/Spot.zip" type="application/octet-stream" sparkle:edSignature="GICma2BZexw8IaotmcJfCCj3l5WU14x7Cw+IpCoHcVWI7M7WlXrmqczEsT40DHIQhfhrDvlno1XTSb1JUcAtDA==" length="1702124" />
+      <title>Version 1.6.0</title>
+      <sparkle:version>1.6.0</sparkle:version>
+      <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
+      <pubDate>Mon, 09 Mar 2026 20:36:41 +0000</pubDate>
+      <enclosure url="https://github.com/joelmoss/spot/releases/download/v1.6.0/Spot.zip" type="application/octet-stream" sparkle:edSignature="qGhmkdPl8weif7mG3l3Tt0x4bbB7zYKp+AoFdRoOzPoTeF/Xxcl1T2aVmpkBSA9yS3nyiu98CLH0+jyCdyTTAQ==" length="1731196" />
     </item>
   </channel>
 </rss>
