@@ -12,11 +12,15 @@ final class SpotifyController {
     var isLiked: Bool = false
     var supportsVolume: Bool = true
     var hasCheckedPlayback: Bool = false
+    var lyrics: String?
+    var showLyrics: Bool = false
+    var isFetchingLyrics: Bool = false
     var auth: (any SpotifyAuthProviding)?
     private var timer: Timer?
     private var isSettingVolume = false
     private var volumeDebounceTask: Task<Void, Never>?
     private var lastCheckedTrackID: String = ""
+    private var lastLyricsTrackID: String = ""
     private var currentPollingInterval: TimeInterval = 5.0
 
     private static let playingInterval: TimeInterval = 5.0
@@ -95,6 +99,61 @@ final class SpotifyController {
         }
     }
 
+    func toggleLyrics() {
+        if showLyrics {
+            showLyrics = false
+            return
+        }
+        guard !trackID.isEmpty else { return }
+        showLyrics = true
+        if lastLyricsTrackID == trackID {
+            return
+        }
+        fetchLyrics()
+    }
+
+    private func fetchLyrics() {
+        guard !trackName.isEmpty, !artistName.isEmpty else { return }
+        isFetchingLyrics = true
+        let track = trackName
+        let artist = artistName
+        let id = trackID
+
+        Task {
+            var components = URLComponents(string: "https://lrclib.net/api/get")!
+            components.queryItems = [
+                URLQueryItem(name: "track_name", value: track),
+                URLQueryItem(name: "artist_name", value: artist),
+            ]
+            var request = URLRequest(url: components.url!)
+            request.setValue("Spot/1.0 (https://github.com/joelmoss/spot)", forHTTPHeaderField: "User-Agent")
+
+            let result: String? = await {
+                guard let (data, response) = try? await URLSession.shared.data(for: request),
+                      let status = (response as? HTTPURLResponse)?.statusCode,
+                      status == 200,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { return nil }
+                // Prefer plain lyrics over synced
+                if let plain = json["plainLyrics"] as? String, !plain.isEmpty {
+                    return plain
+                }
+                if let synced = json["syncedLyrics"] as? String, !synced.isEmpty {
+                    // Strip timestamp tags like [00:12.34]
+                    return synced.replacingOccurrences(of: "\\[\\d{2}:\\d{2}\\.\\d{2}\\]\\s?", with: "", options: .regularExpression)
+                }
+                return nil
+            }()
+
+            await MainActor.run {
+                guard self.trackID == id else { return }
+                self.lyrics = result
+                self.lastLyricsTrackID = id
+                self.isFetchingLyrics = false
+            }
+        }
+    }
+
     private func fetchCurrentTrack() {
         guard let auth, auth.isAuthenticated else {
             isSpotifyRunning = false
@@ -145,7 +204,12 @@ final class SpotifyController {
         let newTrackID = state.trackID
         if newTrackID != trackID {
             trackID = newTrackID
+            lyrics = nil
+            lastLyricsTrackID = ""
             checkIfLiked()
+            if showLyrics {
+                fetchLyrics()
+            }
         } else if lastCheckedTrackID != trackID {
             checkIfLiked()
         }

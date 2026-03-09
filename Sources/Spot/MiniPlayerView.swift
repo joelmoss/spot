@@ -32,8 +32,19 @@ struct MiniPlayerView: View {
     private var playerView: some View {
         VStack(spacing: 0) {
             artwork(size: 220)
+                .overlay {
+                    if spotify.showLyrics {
+                        lyricsOverlay(size: 220)
+                            .transition(.opacity)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.25), value: spotify.showLyrics)
                 .overlay(alignment: .bottomTrailing) {
                     likeButton(size: 14)
+                        .padding(8)
+                }
+                .overlay(alignment: .bottomLeading) {
+                    lyricsButton(size: 14)
                         .padding(8)
                 }
 
@@ -102,6 +113,44 @@ struct MiniPlayerView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func lyricsButton(size: CGFloat) -> some View {
+        Button(action: spotify.toggleLyrics) {
+            Image(systemName: spotify.showLyrics ? "quote.bubble.fill" : "quote.bubble")
+                .font(.system(size: size))
+                .foregroundStyle(.white)
+                .contentTransition(.symbolEffect(.replace))
+                .shadow(color: .black.opacity(0.5), radius: 2)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func lyricsOverlay(size: CGFloat) -> some View {
+        ZStack {
+            Rectangle()
+                .fill(.black.opacity(0.75))
+
+            if spotify.isFetchingLyrics {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white)
+            } else if let lyrics = spotify.lyrics {
+                ScrollView {
+                    Text(lyrics)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(12)
+                }
+            } else {
+                Text("No lyrics found")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+        .frame(width: size, height: size)
+        .transition(.opacity)
     }
 
     private var volumeIcon: String {
