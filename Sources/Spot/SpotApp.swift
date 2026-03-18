@@ -2,6 +2,20 @@ import SwiftUI
 import AppKit
 import ObjectiveC
 
+class LyricsWindow: NSWindow {
+    var onKeyDown: (() -> Void)?
+
+    override var canBecomeKey: Bool { true }
+
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown {
+            onKeyDown?()
+            return
+        }
+        super.sendEvent(event)
+    }
+}
+
 private func makeWindowKeyable(_ window: NSWindow) {
     let actualClass: AnyClass = type(of: window)
     let name = "KeyableWindow_\(NSStringFromClass(actualClass))"
@@ -27,6 +41,9 @@ private func makeWindowKeyable(_ window: NSWindow) {
 class AppDelegate: NSObject, NSApplicationDelegate {
     var auth: SpotifyAuth?
     var playerWindow: NSWindow?
+    var lyricsWindow: LyricsWindow?
+    var lyricsLocalMonitor: Any?
+    weak var spotify: SpotifyController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -41,6 +58,59 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
               let url = URL(string: urlString) else { return }
         auth?.handleCallback(url: url)
+    }
+
+    func showLyricsOverlay(spotify: SpotifyController) {
+        guard lyricsWindow == nil else { return }
+        let screen = playerWindow?.screen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen else { return }
+
+        let window = LyricsWindow(
+            contentRect: screen.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.level = .screenSaver
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = false
+        window.ignoresMouseEvents = false
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.onKeyDown = { [weak self] in
+            self?.dismissLyricsOverlay()
+        }
+
+        let overlayView = LyricsOverlayView(spotify: spotify) { [weak self] in
+            self?.dismissLyricsOverlay()
+        }
+        window.contentView = NSHostingView(rootView: overlayView)
+
+        // LSUIElement apps (.prohibited policy) can't become active or own key windows.
+        // Temporarily switch to .regular so the window can receive key events.
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        lyricsWindow = window
+
+        // Local monitor catches key events while the app is active
+        lyricsLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.dismissLyricsOverlay()
+            return nil
+        }
+    }
+
+    func dismissLyricsOverlay() {
+        if let monitor = lyricsLocalMonitor {
+            NSEvent.removeMonitor(monitor)
+            lyricsLocalMonitor = nil
+        }
+        lyricsWindow?.orderOut(nil)
+        lyricsWindow = nil
+        spotify?.showLyricsOverlay = false
+
+        // Restore LSUIElement behavior — .accessory keeps windows visible but hides dock icon
+        NSApp.setActivationPolicy(.accessory)
     }
 }
 
@@ -61,6 +131,7 @@ struct SpotApp: App {
                 .onAppear {
                     spotify.auth = auth
                     appDelegate.auth = auth
+                    appDelegate.spotify = spotify
                     if let window = NSApplication.shared.windows.first {
                         appDelegate.playerWindow = window
                         configurePlayerWindow(window)
@@ -90,6 +161,13 @@ struct SpotApp: App {
                         window.orderFront(nil)
                     } else {
                         window.orderOut(nil)
+                    }
+                }
+                .onChange(of: spotify.showLyricsOverlay) { _, show in
+                    if show {
+                        appDelegate.showLyricsOverlay(spotify: spotify)
+                    } else {
+                        appDelegate.dismissLyricsOverlay()
                     }
                 }
                 .onChange(of: hideWhenNotPlaying) { _, hide in

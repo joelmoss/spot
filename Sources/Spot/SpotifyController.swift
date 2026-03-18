@@ -12,11 +12,16 @@ final class SpotifyController {
     var isLiked: Bool = false
     var supportsVolume: Bool = true
     var hasCheckedPlayback: Bool = false
-    var lyrics: String?
-    var showLyrics: Bool = false
+    var parsedLyrics: ParsedLyrics = .none
+    var showLyricsOverlay: Bool = false
     var isFetchingLyrics: Bool = false
+    var currentLineIndex: Int = 0
+    var progressMs: Int = 0
+    var durationMs: Int = 0
     var auth: (any SpotifyAuthProviding)?
     private var timer: Timer?
+    private var progressTimer: Timer?
+    private var lastProgressUpdate: Date = Date()
     private var isSettingVolume = false
     private var volumeDebounceTask: Task<Void, Never>?
     private var lastCheckedTrackID: String = ""
@@ -24,6 +29,7 @@ final class SpotifyController {
     private var currentPollingInterval: TimeInterval = 5.0
 
     private static let playingInterval: TimeInterval = 5.0
+    private static let lyricsPlayingInterval: TimeInterval = 3.0
     private static let pausedInterval: TimeInterval = 15.0
     private static let inactiveInterval: TimeInterval = 30.0
 
@@ -35,6 +41,7 @@ final class SpotifyController {
     func stopPolling() {
         timer?.invalidate()
         timer = nil
+        stopProgressTimer()
     }
 
     func nextTrack() {
@@ -100,17 +107,57 @@ final class SpotifyController {
     }
 
     func toggleLyrics() {
-        if showLyrics {
-            showLyrics = false
+        if showLyricsOverlay {
+            showLyricsOverlay = false
+            stopProgressTimer()
             return
         }
         guard !trackID.isEmpty else { return }
-        showLyrics = true
+        showLyricsOverlay = true
+        if isPlaying {
+            startProgressTimer()
+        }
         if lastLyricsTrackID == trackID {
             return
         }
         fetchLyrics()
     }
+
+    // MARK: - Progress Tracking
+
+    func startProgressTimer() {
+        stopProgressTimer()
+        lastProgressUpdate = Date()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let now = Date()
+            let elapsed = Int(now.timeIntervalSince(self.lastProgressUpdate) * 1000)
+            self.lastProgressUpdate = now
+            if self.isPlaying {
+                self.progressMs += elapsed
+                self.updateCurrentLine()
+            }
+        }
+    }
+
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+    }
+
+    /// Lookahead offset so the line appears slightly before its timestamp,
+    /// compensating for API latency and animation duration.
+    static let lyricsLookaheadMs = 400
+
+    private func updateCurrentLine() {
+        guard case .synced(let lines) = parsedLyrics, !lines.isEmpty else { return }
+        let newIndex = LyricsParser.currentLineIndex(for: progressMs + Self.lyricsLookaheadMs, in: lines)
+        if newIndex != currentLineIndex {
+            currentLineIndex = newIndex
+        }
+    }
+
+    // MARK: - Lyrics Fetching
 
     private func fetchLyrics() {
         guard !trackName.isEmpty, !artistName.isEmpty else { return }
@@ -128,31 +175,37 @@ final class SpotifyController {
             var request = URLRequest(url: components.url!)
             request.setValue("Spot/1.0 (https://github.com/joelmoss/spot)", forHTTPHeaderField: "User-Agent")
 
-            let result: String? = await {
+            let result: ParsedLyrics = await {
                 guard let (data, response) = try? await URLSession.shared.data(for: request),
                       let status = (response as? HTTPURLResponse)?.statusCode,
                       status == 200,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                else { return nil }
-                // Prefer plain lyrics over synced
-                if let plain = json["plainLyrics"] as? String, !plain.isEmpty {
-                    return plain
-                }
+                else { return .none }
+                // Prefer synced lyrics for line-by-line highlighting
                 if let synced = json["syncedLyrics"] as? String, !synced.isEmpty {
-                    // Strip timestamp tags like [00:12.34]
-                    return synced.replacingOccurrences(of: "\\[\\d{2}:\\d{2}\\.\\d{2}\\]\\s?", with: "", options: .regularExpression)
+                    let lines = LyricsParser.parseSyncedLyrics(synced)
+                    if !lines.isEmpty {
+                        return .synced(lines)
+                    }
                 }
-                return nil
+                if let plain = json["plainLyrics"] as? String, !plain.isEmpty {
+                    return .plain(plain)
+                }
+                return .none
             }()
 
             await MainActor.run {
                 guard self.trackID == id else { return }
-                self.lyrics = result
+                self.parsedLyrics = result
                 self.lastLyricsTrackID = id
                 self.isFetchingLyrics = false
+                self.currentLineIndex = 0
+                self.updateCurrentLine()
             }
         }
     }
+
+    // MARK: - Playback Polling
 
     private func fetchCurrentTrack() {
         guard let auth, auth.isAuthenticated else {
@@ -187,6 +240,8 @@ final class SpotifyController {
             isPlaying = false
             trackID = ""
             isLiked = false
+            progressMs = 0
+            durationMs = 0
             return
         }
 
@@ -197,28 +252,47 @@ final class SpotifyController {
         artworkURL = state.artworkURL
         isPlaying = state.isPlaying
         supportsVolume = state.supportsVolume
+        progressMs = state.progressMs
+        durationMs = state.durationMs
+        lastProgressUpdate = Date()
         if !isSettingVolume {
             volume = Double(auth?.getVolume() ?? state.volume)
+        }
+
+        // Manage progress timer based on play state and overlay visibility
+        if showLyricsOverlay && isPlaying {
+            if progressTimer == nil {
+                startProgressTimer()
+            }
+        } else {
+            stopProgressTimer()
         }
 
         let newTrackID = state.trackID
         if newTrackID != trackID {
             trackID = newTrackID
-            lyrics = nil
+            parsedLyrics = .none
             lastLyricsTrackID = ""
+            currentLineIndex = 0
             checkIfLiked()
-            if showLyrics {
+            if showLyricsOverlay {
                 fetchLyrics()
             }
         } else if lastCheckedTrackID != trackID {
             checkIfLiked()
         }
+
+        updateCurrentLine()
     }
 
     private func updatePollingInterval(for state: PlaybackState?) {
         let newInterval: TimeInterval
         if let state {
-            newInterval = state.isPlaying ? Self.playingInterval : Self.pausedInterval
+            if showLyricsOverlay && state.isPlaying {
+                newInterval = Self.lyricsPlayingInterval
+            } else {
+                newInterval = state.isPlaying ? Self.playingInterval : Self.pausedInterval
+            }
         } else {
             newInterval = Self.inactiveInterval
         }

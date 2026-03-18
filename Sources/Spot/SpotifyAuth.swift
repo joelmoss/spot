@@ -11,6 +11,8 @@ struct PlaybackState {
     let volume: Int
     let trackID: String
     let supportsVolume: Bool
+    let progressMs: Int
+    let durationMs: Int
 }
 
 protocol SpotifyAuthProviding: AnyObject {
@@ -230,6 +232,9 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
                 }
             }
 
+            let progressMs = json["progress_ms"] as? Int ?? 0
+            let durationMs = item["duration_ms"] as? Int ?? 0
+
             return PlaybackState(
                 trackName: name,
                 artistName: artistName,
@@ -237,7 +242,9 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
                 isPlaying: isPlaying,
                 volume: volume,
                 trackID: trackID,
-                supportsVolume: supportsVolume
+                supportsVolume: supportsVolume,
+                progressMs: progressMs,
+                durationMs: durationMs
             )
         } catch {
             return nil

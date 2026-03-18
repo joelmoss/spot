@@ -54,7 +54,9 @@ final class SpotifyControllerTests: XCTestCase {
             isPlaying: true,
             volume: 75,
             trackID: "6rqhFgbbKwnb9MLmUQDhG6",
-            supportsVolume: true
+            supportsVolume: true,
+            progressMs: 0,
+            durationMs: 0
         )
         controller.applyPlaybackState(state)
 
@@ -80,7 +82,9 @@ final class SpotifyControllerTests: XCTestCase {
             isPlaying: true,
             volume: 50,
             trackID: "abc123",
-            supportsVolume: true
+            supportsVolume: true,
+            progressMs: 0,
+            durationMs: 0
         )
         controller.applyPlaybackState(state)
 
@@ -102,7 +106,9 @@ final class SpotifyControllerTests: XCTestCase {
             isPlaying: true,
             volume: 50,
             trackID: "abc123",
-            supportsVolume: true
+            supportsVolume: true,
+            progressMs: 0,
+            durationMs: 0
         )
         controller.applyPlaybackState(state)
         XCTAssertFalse(controller.isLiked)
@@ -167,7 +173,8 @@ final class SpotifyControllerTests: XCTestCase {
         // A poll arrives with the old volume
         let state = PlaybackState(
             trackName: "Song", artistName: "Artist", artworkURL: nil,
-            isPlaying: true, volume: 30, trackID: "abc", supportsVolume: true
+            isPlaying: true, volume: 30, trackID: "abc", supportsVolume: true,
+            progressMs: 0, durationMs: 0
         )
         controller.applyPlaybackState(state)
 
@@ -205,7 +212,8 @@ final class SpotifyControllerTests: XCTestCase {
         // Poll with old volume — should still be guarded
         let state = PlaybackState(
             trackName: "Song", artistName: "Artist", artworkURL: nil,
-            isPlaying: true, volume: 30, trackID: "abc", supportsVolume: true
+            isPlaying: true, volume: 30, trackID: "abc", supportsVolume: true,
+            progressMs: 0, durationMs: 0
         )
         controller.applyPlaybackState(state)
 
@@ -225,7 +233,8 @@ final class SpotifyControllerTests: XCTestCase {
         // Now polls should update volume again
         let state = PlaybackState(
             trackName: "Song", artistName: "Artist", artworkURL: nil,
-            isPlaying: true, volume: 80, trackID: "abc", supportsVolume: true
+            isPlaying: true, volume: 80, trackID: "abc", supportsVolume: true,
+            progressMs: 0, durationMs: 0
         )
         controller.applyPlaybackState(state)
 
@@ -237,14 +246,16 @@ final class SpotifyControllerTests: XCTestCase {
 
         let restricted = PlaybackState(
             trackName: "Song", artistName: "Artist", artworkURL: nil,
-            isPlaying: true, volume: 50, trackID: "abc", supportsVolume: false
+            isPlaying: true, volume: 50, trackID: "abc", supportsVolume: false,
+            progressMs: 0, durationMs: 0
         )
         controller.applyPlaybackState(restricted)
         XCTAssertFalse(controller.supportsVolume)
 
         let supported = PlaybackState(
             trackName: "Song", artistName: "Artist", artworkURL: nil,
-            isPlaying: true, volume: 50, trackID: "abc", supportsVolume: true
+            isPlaying: true, volume: 50, trackID: "abc", supportsVolume: true,
+            progressMs: 0, durationMs: 0
         )
         controller.applyPlaybackState(supported)
         XCTAssertTrue(controller.supportsVolume)
@@ -261,7 +272,9 @@ final class SpotifyControllerTests: XCTestCase {
             isPlaying: true,
             volume: 50,
             trackID: "abc123",
-            supportsVolume: true
+            supportsVolume: true,
+            progressMs: 0,
+            durationMs: 0
         )
         controller.applyPlaybackState(state)
         XCTAssertTrue(controller.isSpotifyRunning)
